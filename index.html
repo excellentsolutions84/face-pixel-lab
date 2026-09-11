@@ -9,8 +9,9 @@
   body{margin:0;background:#0b0d12;color:#e8ecf5;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:20px;text-align:center}
   h1{font-size:20px;margin:0 0 6px}
   p{font-size:14px;color:#8a93a8;margin:0 0 18px;line-height:1.4}
-  .btns{display:flex;gap:10px;justify-content:center;margin-bottom:18px}
-  label{background:#5eead4;color:#06231f;border:0;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:600}
+  .btns{display:flex;gap:10px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
+  label,button{background:#5eead4;color:#06231f;border:0;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:600;cursor:pointer}
+  button:disabled{opacity:.4}
   input{display:none}
   .wrap{display:inline-block;background:#000;border-radius:12px;padding:8px;border:1px solid #2a3142}
   canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:240px;height:240px;display:block;border-radius:6px}
@@ -20,17 +21,19 @@
 </head>
 <body>
 <h1>Face Pixel Lab</h1>
-<p>Pick a photo. Your face becomes a 48x48 pixel sprite. Long-press it to save.</p>
+<p>Pick a photo. Your face becomes a 48x48 pixel sprite. Tap Save.</p>
 <div class="btns">
   <label>Take photo<input id="cam" type="file" accept="image/*" capture="user"></label>
   <label>Choose photo<input id="lib" type="file" accept="image/*"></label>
+  <button id="save" disabled>Save sprite</button>
 </div>
 <div class="wrap"><canvas id="out" width="48" height="48"></canvas></div>
 <div id="msg">No photo yet.</div>
-<div class="hint">Tip: if save fails, screenshot the pixel face.</div>
+<div class="hint">If Save does nothing, screenshot the pixel face.</div>
 <script>
 const out=document.getElementById('out');
 const msg=document.getElementById('msg');
+const saveBtn=document.getElementById('save');
 const octx=out.getContext('2d');
 function setMsg(t){msg.textContent=t}
 function clamp(n,a,b){return n<a?a:n>b?b:n}
@@ -89,11 +92,13 @@ function pixelate(img){
   octx.imageSmoothingEnabled=false;
   octx.clearRect(0,0,48,48);
   octx.drawImage(small,0,0);
-  setMsg('Done. Long-press the pixel face to save it.');
+  saveBtn.disabled=false;
+  setMsg('Done. Tap Save sprite.');
 }
 function load(file){
   if(!file){setMsg('No file.');return;}
   setMsg('Loading…');
+  saveBtn.disabled=true;
   const url=URL.createObjectURL(file);
   const img=new Image();
   img.onload=()=>{URL.revokeObjectURL(url);pixelate(img);};
@@ -106,6 +111,22 @@ function load(file){
 }
 document.getElementById('cam').onchange=e=>load(e.target.files[0]);
 document.getElementById('lib').onchange=e=>load(e.target.files[0]);
+saveBtn.onclick=()=>{
+  try{
+    out.toBlob(blob=>{
+      if(!blob){setMsg('Save failed. Screenshot the face instead.');return;}
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='face-sprite.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setMsg('Saved. Check Downloads or Files.');
+    },'image/png');
+  }catch(e){
+    setMsg('Save failed. Screenshot the face instead.');
+  }
+};
 </script>
 </body>
 </html>
