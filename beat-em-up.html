@@ -1,1 +1,106 @@
-OPEN /home/workdir/artifacts/chunk1.txt
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Face Fighter</title>
+<style>
+  :root{--bg:#0b0d12;--panel:#161a24;--ink:#e8ecf5;--dim:#8a93a8;--accent:#5eead4;--accent2:#f472b6;--warn:#fbbf24;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden;user-select:none;}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;}
+  #topbar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--panel);border-bottom:1px solid #232a3a;font-size:13px;color:var(--dim);}
+  #topbar b{color:var(--accent);}
+  #stage{flex:1;position:relative;overflow:hidden;background:linear-gradient(#1a2233 0%,#0e1320 100%);}
+  canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges;}
+  #hud{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:10px 14px;pointer-events:none;}
+  .barwrap{width:46%;}
+  .barwrap .name{font-size:11px;color:var(--dim);margin-bottom:3px;display:flex;justify-content:space-between;}
+  .bar{height:10px;background:#2a3142;border-radius:5px;overflow:hidden;border:1px solid #3a4258;}
+  .bar > i{display:block;height:100%;width:100%;border-radius:5px;transition:width .12s;}
+  #p1bar i{background:linear-gradient(90deg,#34d399,#5eead4);}
+  #p2bar i{background:linear-gradient(90deg,#f472b6,#fb7185);}
+  #p2bar{text-align:right;}
+  #p2bar .name{flex-direction:row-reverse;}
+  #centerMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;letter-spacing:1px;text-shadow:0 2px 0 #000,0 0 18px rgba(0,0,0,.6);pointer-events:none;opacity:0;transition:opacity .25s;}
+  #centerMsg.show{opacity:1;}
+  #pads{display:flex;justify-content:space-between;padding:10px 12px 16px;background:var(--panel);border-top:1px solid #232a3a;}
+  .pad{display:flex;gap:8px;align-items:center;}
+  .stick{position:relative;width:118px;height:118px;border-radius:50%;background:radial-gradient(circle at 50% 40%,#232a3a,#141a28);border:2px solid #2e3650;}
+  .stick button{position:absolute;width:34px;height:34px;border-radius:50%;border:none;background:#2a3142;color:var(--ink);font-size:11px;font-weight:700;}
+  .stick .u{top:6px;left:42px;}.stick .d{bottom:6px;left:42px;}.stick .l{left:6px;top:42px;}.stick .r{right:6px;top:42px;}
+  .stick button:active{background:var(--accent);color:#06231f;}
+  .acts{display:flex;gap:8px;}
+  .acts button{width:54px;height:54px;border-radius:14px;border:2px solid #2e3650;background:#1c2233;color:var(--ink);font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+  .acts button:active{transform:scale(.94);}
+  .acts .p{border-color:#34d399;color:#5eead4;}.acts .k{border-color:#fbbf24;color:#fbbf24;}.acts .b{border-color:#60a5fa;color:#93c5fd;}.acts .j{border-color:#f472b6;color:#f9a8d4;}
+  .kbhint{font-size:10px;color:var(--dim);text-align:center;padding:2px 0 6px;background:var(--panel);}
+  #menu{position:absolute;inset:0;background:rgba(8,10,16,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;z-index:5;}
+  #menu h1{font-size:26px;margin:0;letter-spacing:1px;}
+  #menu p{color:var(--dim);font-size:13px;text-align:center;max-width:320px;margin:0;}
+  .facepick{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;}
+  .facepick label{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;}
+  .facepick .thumb{width:72px;height:72px;border-radius:12px;background:#1c2233;border:2px dashed #3a4258;display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:11px;color:var(--dim);}
+  .facepick .thumb img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated;}
+  .facepick input{display:none;}
+  .facepick span{font-size:11px;color:var(--dim);}
+  #startBtn{margin-top:6px;padding:14px 34px;border:none;border-radius:14px;background:linear-gradient(90deg,var(--accent),#2dd4bf);color:#06231f;font-size:16px;font-weight:800;letter-spacing:.5px;}
+  #startBtn:disabled{opacity:.4;}
+  .tiny{font-size:10px;color:var(--dim);}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="topbar"><span>WAVE <b id="waveNum">1</b> / 3</span><span id="scoreTxt">SCORE 0</span></div>
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div class="barwrap"><div class="name"><span>P1</span><span id="p1hp">100</span></div><div class="bar"><i id="p1bar"></i></div></div>
+      <div class="barwrap" id="p2bar"><div class="name"><span id="p2hp">100</span><span>P2</span></div><div class="bar"><i id="p2barFill"></i></div></div>
+    </div>
+    <div id="centerMsg"></div>
+    <div id="menu">
+      <h1>FACE FIGHTER</h1>
+      <p>Upload your face and a friend's. Beat three waves of grunts, then the boss wearing your face. Four buttons: punch, kick, jump, block.</p>
+      <div class="facepick">
+        <label><div class="thumb" id="t1">P1</div><input type="file" accept="image/*" capture="user" id="f1"><span>Player 1</span></label>
+        <label><div class="thumb" id="t2">P2</div><input type="file" accept="image/*" capture="user" id="f2"><span>Player 2</span></label>
+        <label><div class="thumb" id="t3">BOSS</div><input type="file" accept="image/*" id="f3"><span>Boss (opt.)</span></label>
+      </div>
+      <button id="startBtn" disabled>START</button>
+      <div class="tiny">Phone: left pad = P1, right pad = P2. Keyboard: WASD+JKL/Space, Arrows+123/0.</div>
+    </div>
+  </div>
+  <div class="kbhint" id="kbhint">WASD move · J punch · K kick · L block · Space jump &nbsp;||&nbsp; Arrows · 1 punch · 2 kick · 3 block · 0 jump</div>
+  <div id="pads">
+    <div class="pad">
+      <div class="stick">
+        <button class="u" data-p="1" data-d="u">U</button>
+        <button class="d" data-p="1" data-d="d">D</button>
+        <button class="l" data-p="1" data-d="l">L</button>
+        <button class="r" data-p="1" data-d="r">R</button>
+      </div>
+      <div class="acts">
+        <button class="p" data-p="1" data-a="punch">PUNCH</button>
+        <button class="k" data-p="1" data-a="kick">KICK</button>
+        <button class="b" data-p="1" data-a="block">BLOCK</button>
+        <button class="j" data-p="1" data-a="jump">JUMP</button>
+      </div>
+    </div>
+    <div class="pad">
+      <div class="acts">
+        <button class="p" data-p="2" data-a="punch">PUNCH</button>
+        <button class="k" data-p="2" data-a="kick">KICK</button>
+        <button class="b" data-p="2" data-a="block">BLOCK</button>
+        <button class="j" data-p="2" data-a="jump">JUMP</button>
+      </div>
+      <div class="stick">
+        <button class="u" data-p="2" data-d="u">U</button>
+        <button class="d" data-p="2" data-d="d">D</button>
+        <button class="l" data-p="2" data-d="l">L</button>
+        <button class="r" data-p="2" data-d="r">R</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
