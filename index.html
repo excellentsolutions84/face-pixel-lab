@@ -2,31 +2,36 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Face Pixel Lab</title>
 <style>
-  body{margin:0;background:#111;color:#eee;font-family:-apple-system,sans-serif;padding:16px}
-  h1{font-size:18px;margin:0 0 8px}
-  p{font-size:13px;color:#aaa;margin:0 0 12px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-  label,button{background:#2a2a2a;color:#fff;border:0;border-radius:10px;padding:12px 14px;font-size:15px}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#0b0d12;color:#e8ecf5;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:20px;text-align:center}
+  h1{font-size:20px;margin:0 0 6px}
+  p{font-size:14px;color:#8a93a8;margin:0 0 18px;line-height:1.4}
+  .btns{display:flex;gap:10px;justify-content:center;margin-bottom:18px}
+  label{background:#5eead4;color:#06231f;border:0;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:600}
   input{display:none}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;width:240px;height:240px;border-radius:8px}
-  #msg{margin-top:10px;color:#f7c948;font-size:13px}
+  .wrap{display:inline-block;background:#000;border-radius:12px;padding:8px;border:1px solid #2a3142}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:240px;height:240px;display:block;border-radius:6px}
+  #msg{margin-top:14px;color:#fbbf24;font-size:14px;min-height:20px}
+  .hint{margin-top:10px;font-size:12px;color:#5a6478}
 </style>
 </head>
 <body>
 <h1>Face Pixel Lab</h1>
-<p>Pick a photo. Then long-press the pixel face and tap Save Image.</p>
-<div class="row">
+<p>Pick a photo. Your face becomes a 48x48 pixel sprite. Long-press it to save.</p>
+<div class="btns">
   <label>Take photo<input id="cam" type="file" accept="image/*" capture="user"></label>
   <label>Choose photo<input id="lib" type="file" accept="image/*"></label>
 </div>
-<canvas id="out" width="48" height="48"></canvas>
+<div class="wrap"><canvas id="out" width="48" height="48"></canvas></div>
 <div id="msg">No photo yet.</div>
+<div class="hint">Tip: if save fails, screenshot the pixel face.</div>
 <script>
 const out=document.getElementById('out');
 const msg=document.getElementById('msg');
+const octx=out.getContext('2d');
 function setMsg(t){msg.textContent=t}
 function clamp(n,a,b){return n<a?a:n>b?b:n}
 function pixelate(img){
@@ -81,11 +86,10 @@ function pixelate(img){
     dd[i]=pal[best][0]; dd[i+1]=pal[best][1]; dd[i+2]=pal[best][2]; dd[i+3]=255;
   }
   sctx.putImageData(sid,0,0);
-  const o=out.getContext('2d');
-  o.imageSmoothingEnabled=false;
-  o.clearRect(0,0,48,48);
-  o.drawImage(small,0,0);
-  setMsg('Done. Long-press the pixel face → Save Image.');
+  octx.imageSmoothingEnabled=false;
+  octx.clearRect(0,0,48,48);
+  octx.drawImage(small,0,0);
+  setMsg('Done. Long-press the pixel face to save it.');
 }
 function load(file){
   if(!file){setMsg('No file.');return;}
