@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face Pixel Lab</title>
+<style>
+  body{margin:0;background:#111;color:#eee;font-family:-apple-system,sans-serif;padding:16px}
+  h1{font-size:18px;margin:0 0 8px}
+  p{font-size:13px;color:#aaa;margin:0 0 12px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  label,button{background:#2a2a2a;color:#fff;border:0;border-radius:10px;padding:12px 14px;font-size:15px}
+  input{display:none}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;background:#000;width:240px;height:240px;border-radius:8px}
+  #msg{margin-top:10px;color:#f7c948;font-size:13px}
+</style>
+</head>
+<body>
+<h1>Face Pixel Lab</h1>
+<p>Pick a photo. Then long-press the pixel face and tap Save Image.</p>
+<div class="row">
+  <label>Take photo<input id="cam" type="file" accept="image/*" capture="user"></label>
+  <label>Choose photo<input id="lib" type="file" accept="image/*"></label>
+</div>
+<canvas id="out" width="48" height="48"></canvas>
+<div id="msg">No photo yet.</div>
+<script>
+const out=document.getElementById('out');
+const msg=document.getElementById('msg');
+function setMsg(t){msg.textContent=t}
+function clamp(n,a,b){return n<a?a:n>b?b:n}
+function pixelate(img){
+  const size=48;
+  const s=Math.min(img.width,img.height);
+  const sx=(img.width-s)/2, sy=(img.height-s)/2;
+  const tmp=document.createElement('canvas');
+  tmp.width=size*2; tmp.height=size*2;
+  const t=tmp.getContext('2d');
+  t.drawImage(img,sx,sy,s,s,0,0,size*2,size*2);
+  let id=t.getImageData(0,0,tmp.width,tmp.height);
+  let min=255,max=0,d=id.data;
+  for(let i=0;i<d.length;i+=4){const y=.2*d[i]+.7*d[i+1]+.1*d[i+2]; if(y<min)min=y; if(y>max)max=y;}
+  const span=Math.max(1,max-min);
+  for(let i=0;i<d.length;i+=4){d[i]=clamp((d[i]-min)*255/span,0,255);d[i+1]=clamp((d[i+1]-min)*255/span,0,255);d[i+2]=clamp((d[i+2]-min)*255/span,0,255);}
+  t.putImageData(id,0,0);
+  const small=document.createElement('canvas');
+  small.width=size; small.height=size;
+  const sctx=small.getContext('2d');
+  sctx.imageSmoothingEnabled=false;
+  sctx.drawImage(tmp,0,0,size,size);
+  const sid=sctx.getImageData(0,0,size,size);
+  const px=[];
+  for(let i=0;i<sid.data.length;i+=4) px.push([sid.data[i],sid.data[i+1],sid.data[i+2]]);
+  const boxes=[px];
+  while(boxes.length<24){
+    let bi=0,br=-1,ax=0;
+    boxes.forEach((box,i)=>{
+      if(box.length<2) return;
+      const mn=[255,255,255],mx=[0,0,0];
+      box.forEach(p=>{for(let c=0;c<3;c++){if(p[c]<mn[c])mn[c]=p[c]; if(p[c]>mx[c])mx[c]=p[c];}});
+      const r=[mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]];
+      const a=r[0]>=r[1]&&r[0]>=r[2]?0:r[1]>=r[2]?1:2;
+      if(r[a]>br){br=r[a];bi=i;ax=a;}
+    });
+    if(br<=0) break;
+    const box=boxes[bi].slice().sort((a,b)=>a[ax]-b[ax]);
+    const mid=Math.floor(box.length/2);
+    boxes.splice(bi,1,box.slice(0,mid),box.slice(mid));
+  }
+  const pal=boxes.map(box=>{
+    const s=[0,0,0]; box.forEach(p=>{s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];});
+    return [Math.round(s[0]/box.length),Math.round(s[1]/box.length),Math.round(s[2]/box.length)];
+  });
+  const dd=sid.data;
+  for(let i=0;i<dd.length;i+=4){
+    let best=0,bd=1e9;
+    for(let p=0;p<pal.length;p++){
+      const dr=pal[p][0]-dd[i],dg=pal[p][1]-dd[i+1],db=pal[p][2]-dd[i+2];
+      const dist=dr*dr+dg*dg+db*db; if(dist<bd){bd=dist;best=p;}
+    }
+    dd[i]=pal[best][0]; dd[i+1]=pal[best][1]; dd[i+2]=pal[best][2]; dd[i+3]=255;
+  }
+  sctx.putImageData(sid,0,0);
+  const o=out.getContext('2d');
+  o.imageSmoothingEnabled=false;
+  o.clearRect(0,0,48,48);
+  o.drawImage(small,0,0);
+  setMsg('Done. Long-press the pixel face → Save Image.');
+}
+function load(file){
+  if(!file){setMsg('No file.');return;}
+  setMsg('Loading…');
+  const url=URL.createObjectURL(file);
+  const img=new Image();
+  img.onload=()=>{URL.revokeObjectURL(url);pixelate(img);};
+  img.onerror=()=>{
+    const r=new FileReader();
+    r.onload=()=>{const i2=new Image(); i2.onload=()=>pixelate(i2); i2.onerror=()=>setMsg('Use a screenshot of the photo instead.'); i2.src=r.result;};
+    r.readAsDataURL(file);
+  };
+  img.src=url;
+}
+document.getElementById('cam').onchange=e=>load(e.target.files[0]);
+document.getElementById('lib').onchange=e=>load(e.target.files[0]);
+</script>
+</body>
+</html>
