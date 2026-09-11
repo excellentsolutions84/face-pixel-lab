@@ -1,9 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Face Fighter</title>
+<style>
+  :root{--bg:#0b0d12;--panel:#161a24;--ink:#e8ecf5;--dim:#8a93a8;--accent:#5eead4;--accent2:#f472b6;--warn:#fbbf24;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden;}
+  #wrap{display:flex;flex-direction:column;height:100%;}
+  #top{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--panel);font-size:13px;font-weight:700;letter-spacing:.5px;}
+  #top .hp{display:flex;align-items:center;gap:6px;}
+  .bar{width:90px;height:10px;background:#2a3142;border-radius:5px;overflow:hidden;}
+  .bar>div{height:100%;width:100%;background:var(--accent);transition:width .15s;}
+  #p2bar>div{background:var(--accent2);}
+  #centerMsg{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;letter-spacing:2px;color:#fff;text-shadow:0 0 18px rgba(94,234,212,.6);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5;}
+  #centerMsg.show{opacity:1;}
+  #game{flex:1;position:relative;min-height:0;}
+  canvas{display:block;width:100%;height:100%;background:#0e1320;image-rendering:pixelated;}
+  #pads{display:flex;justify-content:space-between;padding:8px;background:var(--panel);gap:8px;}
+  .pad{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,46px);gap:6px;}
+  .pad button{border:none;border-radius:12px;background:#243049;color:var(--ink);font-size:18px;font-weight:800;}
+  .pad button:active{background:var(--accent);color:#06231f;}
+  .pad .act{background:#3a2a4a;}
+  .pad .act:active{background:var(--accent2);}
+  #menu{position:absolute;inset:0;background:rgba(11,13,18,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;z-index:10;}
+  #menu h1{margin:0;font-size:26px;letter-spacing:1px;}
+  #menu p{margin:0;color:var(--dim);font-size:13px;text-align:center;max-width:320px;}
+  .faces{display:flex;gap:14px;}
+  .facebox{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .facebox label{font-size:11px;color:var(--dim);}
+  .thumb{width:64px;height:64px;border:2px dashed #3a4a66;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#121826;}
+  .thumb canvas{width:100%;height:100%;}
+  .facebox input{display:none;}
+  #startBtn{margin-top:6px;padding:12px 26px;border:none;border-radius:14px;background:var(--accent);color:#06231f;font-size:16px;font-weight:800;}
+  #startBtn:disabled{opacity:.4;}
+  .hint{font-size:11px;color:var(--dim);text-align:center;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="top">
+    <div class="hp"><span>P1</span><div class="bar"><div id="p1barFill"></div></div><span id="p1hp">100</span></div>
+    <div style="color:var(--dim)">WAVE <span id="waveNum">1</span> · <span id="scoreTxt">SCORE 0</span></div>
+    <div class="hp"><span id="p2hp">100</span><div class="bar" id="p2bar"><div id="p2barFill"></div></div><span>P2</span></div>
+  </div>
+  <div id="game">
+    <canvas id="cv"></canvas>
+    <div id="centerMsg"></div>
+    <div id="menu">
+      <h1>FACE FIGHTER</h1>
+      <p>Upload your face for player one, a friend's for player two, and optionally a boss. Then punch, kick, jump, and block your way through three waves.</p>
+      <div class="faces">
+        <div class="facebox"><label>Player 1</label><label class="thumb" id="t1" for="f1"></label><input id="f1" type="file" accept="image/*" capture="user"></div>
+        <div class="facebox"><label>Player 2</label><label class="thumb" id="t2" for="f2"></label><input id="f2" type="file" accept="image/*" capture="user"></div>
+        <div class="facebox"><label>Boss</label><label class="thumb" id="t3" for="f3"></label><input id="f3" type="file" accept="image/*" capture="user"></div>
+      </div>
+      <button id="startBtn" disabled>Start</button>
+      <div class="hint">P1: WASD move · J punch · K kick · L block · Space jump<br>P2: Arrows move · 1 punch · 2 kick · 3 block · 0 jump</div>
+    </div>
+  </div>
+  <div id="pads">
+    <div class="pad" data-p="1">
+      <button data-p="1" data-d="u">▲</button><button data-p="1" data-a="punch" class="act">P</button><button data-p="1" data-d="r">▶</button>
+      <button data-p="1" data-d="l">◀</button><button data-p="1" data-a="block" class="act">B</button><button data-p="1" data-d="d">▼</button>
+      <button data-p="1" data-a="kick" class="act">K</button><button data-p="1" data-a="jump" class="act">J</button><span></span>
+    </div>
+    <div class="pad" data-p="2">
+      <button data-p="2" data-d="u">▲</button><button data-p="2" data-a="punch" class="act">P</button><button data-p="2" data-d="r">▶</button>
+      <button data-p="2" data-d="l">◀</button><button data-p="2" data-a="block" class="act">B</button><button data-p="2" data-d="d">▼</button>
+      <button data-p="2" data-a="kick" class="act">K</button><button data-p="2" data-a="jump" class="act">J</button><span></span>
+    </div>
+  </div>
+</div>
+<script>
 const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
 let VW=960,VH=540,SCALE=1;
 function resize(){const r=cv.getBoundingClientRect();SCALE=Math.max(1,Math.floor(r.width/VW));cv.width=VW;cv.height=VH;}
 window.addEventListener('resize',resize);resize();
 
-// ---------- pixel face conversion ----------
 function pixelateFace(img,size=64,palette=32){
   const c=document.createElement('canvas');c.width=size;c.height=size;const x=c.getContext('2d');
   const sw=img.width,sh=img.height,side=Math.min(sw,sh);
@@ -40,7 +115,6 @@ function pixelateFace(img,size=64,palette=32){
   return c;
 }
 
-// ---------- game state ----------
 const ST={menu:0,play:1,waveClear:2,boss:3,win:4,lose:5};
 let state=ST.menu;
 let players=[],enemies=[],boss=null,wave=1,score=0,camX=0,shake=0,msgTimer=0,msgText='';
@@ -64,6 +138,7 @@ function startGame(){
   players.push(makePlayer(200,P2FACE,true));
   spawnWave();
   state=ST.play;hideMsg();
+  document.getElementById('menu').style.display='none';
 }
 function spawnWave(){
   enemies=[];
@@ -80,7 +155,6 @@ function spawnBoss(){
 function showMsg(t,ms){msgText=t;msgTimer=ms;const m=document.getElementById('centerMsg');m.textContent=t;m.classList.add('show');}
 function hideMsg(){msgTimer=0;document.getElementById('centerMsg').classList.remove('show');}
 
-// ---------- input ----------
 const keys={};
 const pad={1:{u:0,d:0,l:0,r:0,punch:0,kick:0,block:0,jump:0},2:{u:0,d:0,l:0,r:0,punch:0,kick:0,block:0,jump:0}};
 window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;handleKey(e.key.toLowerCase(),1);});
@@ -99,7 +173,6 @@ document.querySelectorAll('#pads button').forEach(b=>{
   b.addEventListener('mousedown',down);b.addEventListener('mouseup',up);b.addEventListener('mouseleave',up);
 });
 
-// ---------- update ----------
 function update(){
   if(state!==ST.play){if(msgTimer>0){msgTimer--;if(msgTimer===0)hideMsg();}return;}
   for(const p of players)updatePlayer(p);
@@ -117,7 +190,7 @@ function update(){
   if(boss&&boss.dead){score+=500;showMsg('YOU WIN',180);state=ST.win;}
   if(players.every(p=>p.dead)){showMsg('GAME OVER',180);state=ST.lose;}
   document.getElementById('p1hp').textContent=Math.max(0,Math.round(players[0].hp));
-  document.getElementById('p1bar').style.width=Math.max(0,players[0].hp)+'%';
+  document.getElementById('p1barFill').style.width=Math.max(0,players[0].hp)+'%';
   document.getElementById('p2hp').textContent=Math.max(0,Math.round(players[1].hp));
   document.getElementById('p2barFill').style.width=Math.max(0,players[1].hp)+'%';
   document.getElementById('waveNum').textContent=wave;
@@ -212,7 +285,6 @@ function updateBoss(b){
   if(b.hp<b.maxhp*0.4&&b.phase===0){b.phase=1;showMsg('ENRAGED',60);}
 }
 
-// ---------- draw ----------
 function draw(){
   ctx.save();
   if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
@@ -252,7 +324,7 @@ function drawFighter(f,isBoss){
   }else{
     ctx.fillStyle='#e8c9a0';ctx.fillRect(hx,hy,hw,hh);
     ctx.fillStyle='#3a2a1a';ctx.fillRect(hx+hw*0.25,hy+hh*0.35,3,3);ctx.fillRect(hx+hw*0.6,hy+hh*0.35,3,3);
-    ctx.fillRect(hx+hw*0.35,hy+hh*0.65,hw*0.3,2);
+    ctx.fillStyle='#3a2a1a';ctx.fillRect(hx+hw*0.35,hy+hh*0.65,hw*0.3,2);
   }
   if(isBoss){ctx.fillStyle='#fbbf24';ctx.fillRect(hx-2,hy-6,hw+4,5);}
   if(f.flash>0){ctx.fillStyle='rgba(255,255,255,'+(f.flash/10)+')';ctx.fillRect(hx-2,hy-2,hw+4,f.h);}
@@ -264,11 +336,9 @@ function drawFighter(f,isBoss){
   }
 }
 
-// ---------- loop ----------
 function loop(){update();draw();requestAnimationFrame(loop);}
 loop();
 
-// ---------- menu wiring ----------
 let P1FACE=null,P2FACE=null,BOSSFACE=null;
 function loadFace(file,cb){
   const url=URL.createObjectURL(file);
