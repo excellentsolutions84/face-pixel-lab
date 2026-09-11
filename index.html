@@ -14,20 +14,20 @@
   button:disabled{opacity:.4}
   input{display:none}
   .wrap{display:inline-block;background:#000;border-radius:12px;padding:8px;border:1px solid #2a3142}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:240px;height:240px;display:block;border-radius:6px}
+  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:256px;height:256px;display:block;border-radius:6px}
   #msg{margin-top:14px;color:#fbbf24;font-size:14px;min-height:20px}
   .hint{margin-top:10px;font-size:12px;color:#5a6478}
 </style>
 </head>
 <body>
 <h1>Face Pixel Lab</h1>
-<p>Pick a photo. Your face becomes a 48x48 pixel sprite. Tap Save.</p>
+<p>Pick a photo. Your face becomes a 64x64 pixel sprite. Tap Save.</p>
 <div class="btns">
   <label>Take photo<input id="cam" type="file" accept="image/*" capture="user"></label>
   <label>Choose photo<input id="lib" type="file" accept="image/*"></label>
   <button id="save" disabled>Save sprite</button>
 </div>
-<div class="wrap"><canvas id="out" width="48" height="48"></canvas></div>
+<div class="wrap"><canvas id="out" width="64" height="64"></canvas></div>
 <div id="msg">No photo yet.</div>
 <div class="hint">If Save does nothing, screenshot the pixel face.</div>
 <script>
@@ -38,7 +38,7 @@ const octx=out.getContext('2d');
 function setMsg(t){msg.textContent=t}
 function clamp(n,a,b){return n<a?a:n>b?b:n}
 function pixelate(img){
-  const size=48;
+  const size=64;
   const s=Math.min(img.width,img.height);
   const sx=(img.width-s)/2, sy=(img.height-s)/2;
   const tmp=document.createElement('canvas');
@@ -102,7 +102,7 @@ function pixelate(img){
   }
   sctx.putImageData(sid,0,0);
   octx.imageSmoothingEnabled=false;
-  octx.clearRect(0,0,48,48);
+  octx.clearRect(0,0,64,64);
   octx.drawImage(small,0,0);
   saveBtn.disabled=false;
   setMsg('Done. Tap Save sprite.');
