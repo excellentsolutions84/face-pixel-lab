@@ -1,144 +1,371 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Face Pixel Lab</title>
+<title>Face Fighter</title>
 <style>
-  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-  body{margin:0;background:#0b0d12;color:#e8ecf5;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:20px;text-align:center}
-  h1{font-size:20px;margin:0 0 6px}
-  p{font-size:14px;color:#8a93a8;margin:0 0 18px;line-height:1.4}
-  .btns{display:flex;gap:10px;justify-content:center;margin-bottom:18px;flex-wrap:wrap}
-  label,button{background:#5eead4;color:#06231f;border:0;border-radius:12px;padding:14px 18px;font-size:16px;font-weight:600;cursor:pointer}
-  button:disabled{opacity:.4}
-  input{display:none}
-  .wrap{display:inline-block;background:#000;border-radius:12px;padding:8px;border:1px solid #2a3142}
-  canvas{image-rendering:pixelated;image-rendering:crisp-edges;width:256px;height:256px;display:block;border-radius:6px}
-  #msg{margin-top:14px;color:#fbbf24;font-size:14px;min-height:20px}
-  .hint{margin-top:10px;font-size:12px;color:#5a6478}
+  :root{--bg:#0b0d12;--panel:#161a24;--ink:#e8ecf5;--dim:#8a93a8;--accent:#5eead4;--accent2:#f472b6;--warn:#fbbf24;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;overflow:hidden;}
+  #wrap{display:flex;flex-direction:column;height:100%;}
+  #top{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--panel);font-size:13px;font-weight:700;letter-spacing:.5px;}
+  #top .hp{display:flex;align-items:center;gap:6px;}
+  .bar{width:90px;height:10px;background:#2a3142;border-radius:5px;overflow:hidden;}
+  .bar>div{height:100%;width:100%;background:var(--accent);transition:width .15s;}
+  #p2bar>div{background:var(--accent2);}
+  #centerMsg{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);font-size:42px;font-weight:900;letter-spacing:2px;color:#fff;text-shadow:0 0 18px rgba(94,234,212,.6);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5;}
+  #centerMsg.show{opacity:1;}
+  #game{flex:1;position:relative;min-height:0;}
+  canvas{display:block;width:100%;height:100%;background:#0e1320;image-rendering:pixelated;}
+  #pads{display:flex;justify-content:space-between;padding:8px;background:var(--panel);gap:8px;}
+  .pad{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,46px);gap:6px;}
+  .pad button{border:none;border-radius:12px;background:#243049;color:var(--ink);font-size:18px;font-weight:800;}
+  .pad button:active{background:var(--accent);color:#06231f;}
+  .pad .act{background:#3a2a4a;}
+  .pad .act:active{background:var(--accent2);}
+  #menu{position:absolute;inset:0;background:rgba(11,13,18,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;z-index:10;}
+  #menu h1{margin:0;font-size:26px;letter-spacing:1px;}
+  #menu p{margin:0;color:var(--dim);font-size:13px;text-align:center;max-width:320px;}
+  .faces{display:flex;gap:14px;}
+  .facebox{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .facebox label{font-size:11px;color:var(--dim);}
+  .thumb{width:64px;height:64px;border:2px dashed #3a4a66;border-radius:10px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#121826;}
+  .thumb canvas{width:100%;height:100%;}
+  .facebox input{display:none;}
+  #startBtn{margin-top:6px;padding:12px 26px;border:none;border-radius:14px;background:var(--accent);color:#06231f;font-size:16px;font-weight:800;}
+  #startBtn:disabled{opacity:.4;}
+  .hint{font-size:11px;color:var(--dim);text-align:center;}
 </style>
 </head>
 <body>
-<h1>Face Pixel Lab</h1>
-<p>Pick a photo. Your face becomes a 64x64 pixel sprite. Tap Save.</p>
-<div class="btns">
-  <label>Take photo<input id="cam" type="file" accept="image/*" capture="user"></label>
-  <label>Choose photo<input id="lib" type="file" accept="image/*"></label>
-  <button id="save" disabled>Save sprite</button>
+<div id="wrap">
+  <div id="top">
+    <div class="hp"><span>P1</span><div class="bar"><div id="p1barFill"></div></div><span id="p1hp">100</span></div>
+    <div style="color:var(--dim)">WAVE <span id="waveNum">1</span> · <span id="scoreTxt">SCORE 0</span></div>
+    <div class="hp"><span id="p2hp">100</span><div class="bar" id="p2bar"><div id="p2barFill"></div></div><span>P2</span></div>
+  </div>
+  <div id="game">
+    <canvas id="cv"></canvas>
+    <div id="centerMsg"></div>
+    <div id="menu">
+      <h1>FACE FIGHTER</h1>
+      <p>Upload your face for player one, a friend's for player two, and optionally a boss. Then punch, kick, jump, and block your way through three waves.</p>
+      <div class="faces">
+        <div class="facebox"><label>Player 1</label><label class="thumb" id="t1" for="f1"></label><input id="f1" type="file" accept="image/*" capture="user"></div>
+        <div class="facebox"><label>Player 2</label><label class="thumb" id="t2" for="f2"></label><input id="f2" type="file" accept="image/*" capture="user"></div>
+        <div class="facebox"><label>Boss</label><label class="thumb" id="t3" for="f3"></label><input id="f3" type="file" accept="image/*" capture="user"></div>
+      </div>
+      <button id="startBtn" disabled>Start</button>
+      <div class="hint">P1: WASD move · J punch · K kick · L block · Space jump<br>P2: Arrows move · 1 punch · 2 kick · 3 block · 0 jump</div>
+    </div>
+  </div>
+  <div id="pads">
+    <div class="pad" data-p="1">
+      <button data-p="1" data-d="u">▲</button><button data-p="1" data-a="punch" class="act">P</button><button data-p="1" data-d="r">▶</button>
+      <button data-p="1" data-d="l">◀</button><button data-p="1" data-a="block" class="act">B</button><button data-p="1" data-d="d">▼</button>
+      <button data-p="1" data-a="kick" class="act">K</button><button data-p="1" data-a="jump" class="act">J</button><span></span>
+    </div>
+    <div class="pad" data-p="2">
+      <button data-p="2" data-d="u">▲</button><button data-p="2" data-a="punch" class="act">P</button><button data-p="2" data-d="r">▶</button>
+      <button data-p="2" data-d="l">◀</button><button data-p="2" data-a="block" class="act">B</button><button data-p="2" data-d="d">▼</button>
+      <button data-p="2" data-a="kick" class="act">K</button><button data-p="2" data-a="jump" class="act">J</button><span></span>
+    </div>
+  </div>
 </div>
-<div class="wrap"><canvas id="out" width="64" height="64"></canvas></div>
-<div id="msg">No photo yet.</div>
-<div class="hint">If Save does nothing, screenshot the pixel face.</div>
 <script>
-const out=document.getElementById('out');
-const msg=document.getElementById('msg');
-const saveBtn=document.getElementById('save');
-const octx=out.getContext('2d');
-function setMsg(t){msg.textContent=t}
-function clamp(n,a,b){return n<a?a:n>b?b:n}
-function pixelate(img){
-  const size=64;
-  const s=Math.min(img.width,img.height);
-  const sx=(img.width-s)/2, sy=(img.height-s)/2;
-  const tmp=document.createElement('canvas');
-  tmp.width=size*2; tmp.height=size*2;
-  const t=tmp.getContext('2d');
-  t.drawImage(img,sx,sy,s,s,0,0,size*2,size*2);
-  let id=t.getImageData(0,0,tmp.width,tmp.height);
-  let min=255,max=0,d=id.data;
-  for(let i=0;i<d.length;i+=4){const y=.2*d[i]+.7*d[i+1]+.1*d[i+2]; if(y<min)min=y; if(y>max)max=y;}
-  const span=Math.max(1,max-min);
-  for(let i=0;i<d.length;i+=4){d[i]=clamp((d[i]-min)*255/span,0,255);d[i+1]=clamp((d[i+1]-min)*255/span,0,255);d[i+2]=clamp((d[i+2]-min)*255/span,0,255);}
-  // light unsharp mask for sharper eyes/mouth
-  const blur=document.createElement('canvas');
-  blur.width=tmp.width; blur.height=tmp.height;
-  const bctx=blur.getContext('2d');
-  bctx.filter='blur(1px)';
-  bctx.drawImage(tmp,0,0);
-  const bid=bctx.getImageData(0,0,tmp.width,tmp.height).data;
-  for(let i=0;i<d.length;i+=4){
-    d[i]=clamp(d[i]+0.6*(d[i]-bid[i]),0,255);
-    d[i+1]=clamp(d[i+1]+0.6*(d[i+1]-bid[i+1]),0,255);
-    d[i+2]=clamp(d[i+2]+0.6*(d[i+2]-bid[i+2]),0,255);
+const cv=document.getElementById('cv'),ctx=cv.getContext('2d');
+let VW=960,VH=540,SCALE=1;
+function resize(){const r=cv.getBoundingClientRect();SCALE=Math.max(1,Math.floor(r.width/VW));cv.width=VW;cv.height=VH;}
+window.addEventListener('resize',resize);resize();
+
+function pixelateFace(img,size=64,palette=32){
+  const c=document.createElement('canvas');c.width=size;c.height=size;const x=c.getContext('2d');
+  const sw=img.width,sh=img.height,side=Math.min(sw,sh);
+  const sx=(sw-side)/2, sy=(sh-side)/2 - side*0.05;
+  x.drawImage(img,sx,sy,side,side,0,0,size,size);
+  let d=x.getImageData(0,0,size,size),data=d.data;
+  let mn=255,mx=0;for(let i=0;i<data.length;i+=4){const l=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];if(l<mn)mn=l;if(l>mx)mx=l;}
+  const range=Math.max(1,mx-mn);
+  for(let i=0;i<data.length;i+=4){for(let k=0;k<3;k++){let v=(data[i+k]-mn)/range*255;data[i+k]=Math.max(0,Math.min(255,v));}}
+  const blur=document.createElement('canvas');blur.width=size;blur.height=size;const bx=blur.getContext('2d');
+  bx.filter='blur(1px)';bx.drawImage(c,0,0);const bd=bx.getImageData(0,0,size,size).data;
+  for(let i=0;i<data.length;i+=4){for(let k=0;k<3;k++){data[i+k]=Math.max(0,Math.min(255,data[i+k]+0.6*(data[i+k]-bd[i+k])));}}
+  x.putImageData(d,0,0);
+  const img2=x.getImageData(0,0,size,size),px=img2.data;
+  const colors=[];for(let i=0;i<px.length;i+=4)colors.push([px[i],px[i+1],px[i+2]]);
+  function quant(cols,n){
+    if(n<=1||cols.length===0)return [avg(cols)];
+    let r=[255,0],g=[255,0],b=[255,0];
+    for(const c of cols){r[0]=Math.min(r[0],c[0]);r[1]=Math.max(r[1],c[0]);g[0]=Math.min(g[0],c[1]);g[1]=Math.max(g[1],c[1]);b[0]=Math.min(b[0],c[2]);b[1]=Math.max(b[1],c[2]);}
+    const dr=r[1]-r[0],dg=g[1]-g[0],db=b[1]-b[0];
+    let axis=0;if(dg>dr&&dg>=db)axis=1;else if(db>dr)axis=2;
+    cols.sort((a,b)=>a[axis]-b[axis]);
+    const mid=Math.floor(cols.length/2);
+    return quant(cols.slice(0,mid),n-1).concat(quant(cols.slice(mid),1));
   }
-  t.putImageData(id,0,0);
-  const small=document.createElement('canvas');
-  small.width=size; small.height=size;
-  const sctx=small.getContext('2d');
-  sctx.imageSmoothingEnabled=false;
-  sctx.drawImage(tmp,0,0,size,size);
-  const sid=sctx.getImageData(0,0,size,size);
-  const px=[];
-  for(let i=0;i<sid.data.length;i+=4) px.push([sid.data[i],sid.data[i+1],sid.data[i+2]]);
-  const boxes=[px];
-  while(boxes.length<32){
-    let bi=0,br=-1,ax=0;
-    boxes.forEach((box,i)=>{
-      if(box.length<2) return;
-      const mn=[255,255,255],mx=[0,0,0];
-      box.forEach(p=>{for(let c=0;c<3;c++){if(p[c]<mn[c])mn[c]=p[c]; if(p[c]>mx[c])mx[c]=p[c];}});
-      const r=[mx[0]-mn[0],mx[1]-mn[1],mx[2]-mn[2]];
-      const a=r[0]>=r[1]&&r[0]>=r[2]?0:r[1]>=r[2]?1:2;
-      if(r[a]>br){br=r[a];bi=i;ax=a;}
-    });
-    if(br<=0) break;
-    const box=boxes[bi].slice().sort((a,b)=>a[ax]-b[ax]);
-    const mid=Math.floor(box.length/2);
-    boxes.splice(bi,1,box.slice(0,mid),box.slice(mid));
+  function avg(cols){if(!cols.length)return[0,0,0];let r=0,g=0,b=0;for(const c of cols){r+=c[0];g+=c[1];b+=c[2];}return[Math.round(r/cols.length),Math.round(g/cols.length),Math.round(b/cols.length)];}
+  const palette2=quant(colors,palette);
+  for(let i=0;i<px.length;i+=4){
+    let best=0,bd2=1e9;
+    for(let j=0;j<palette2.length;j++){const p=palette2[j];const dd=(p[0]-px[i])**2+(p[1]-px[i+1])**2+(p[2]-px[i+2])**2;if(dd<bd2){bd2=dd;best=j;}}
+    px[i]=palette2[best][0];px[i+1]=palette2[best][1];px[i+2]=palette2[best][2];px[i+3]=255;
   }
-  const pal=boxes.map(box=>{
-    const s=[0,0,0]; box.forEach(p=>{s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];});
-    return [Math.round(s[0]/box.length),Math.round(s[1]/box.length),Math.round(s[2]/box.length)];
-  });
-  const dd=sid.data;
-  for(let i=0;i<dd.length;i+=4){
-    let best=0,bd=1e9;
-    for(let p=0;p<pal.length;p++){
-      const dr=pal[p][0]-dd[i],dg=pal[p][1]-dd[i+1],db=pal[p][2]-dd[i+2];
-      const dist=dr*dr+dg*dg+db*db; if(dist<bd){bd=dist;best=p;}
-    }
-    dd[i]=pal[best][0]; dd[i+1]=pal[best][1]; dd[i+2]=pal[best][2]; dd[i+3]=255;
-  }
-  sctx.putImageData(sid,0,0);
-  octx.imageSmoothingEnabled=false;
-  octx.clearRect(0,0,64,64);
-  octx.drawImage(small,0,0);
-  saveBtn.disabled=false;
-  setMsg('Done. Tap Save sprite.');
+  x.putImageData(img2,0,0);
+  return c;
 }
-function load(file){
-  if(!file){setMsg('No file.');return;}
-  setMsg('Loading…');
-  saveBtn.disabled=true;
+
+const ST={menu:0,play:1,waveClear:2,boss:3,win:4,lose:5};
+let state=ST.menu;
+let players=[],enemies=[],boss=null,wave=1,score=0,camX=0,shake=0,msgTimer=0,msgText='';
+const GRAV=0.7,GROUND=VH-70;
+
+function makePlayer(x,face,isP2){
+  return {x,y:GROUND,vx:0,vy:0,w:34,h:58,hp:100,maxhp:100,face,facing:isP2?-1:1,
+    state:'idle',atk:0,atkType:'',block:false,hitstun:0,invuln:0,atkCD:0,coyote:0,jumps:1,
+    isP2,dead:false,flash:0};
+}
+function makeEnemy(x,hp,face){
+  return {x,y:GROUND,vx:0,vy:0,w:30,h:54,hp,maxhp:hp,face,facing:1,state:'walk',atk:0,hitstun:0,dead:false,flash:0,type:'grunt'};
+}
+function makeBoss(x,face){
+  return {x,y:GROUND-10,vx:0,vy:0,w:46,h:78,hp:260,maxhp:260,face:face||null,facing:1,state:'idle',atk:0,hitstun:0,dead:false,flash:0,type:'boss',phase:0,atkCD:60};
+}
+
+function startGame(){
+  players=[];enemies=[];boss=null;wave=1;score=0;camX=0;shake=0;
+  players.push(makePlayer(120,P1FACE,false));
+  players.push(makePlayer(200,P2FACE,true));
+  spawnWave();
+  state=ST.play;hideMsg();
+  document.getElementById('menu').style.display='none';
+}
+function spawnWave(){
+  enemies=[];
+  const n=3;
+  for(let i=0;i<n;i++){
+    enemies.push(makeEnemy(900+i*90+Math.random()*40,22,null));
+  }
+}
+function spawnBoss(){
+  boss=makeBoss(1100,BOSSFACE);
+  showMsg('BOSS',90);
+}
+
+function showMsg(t,ms){msgText=t;msgTimer=ms;const m=document.getElementById('centerMsg');m.textContent=t;m.classList.add('show');}
+function hideMsg(){msgTimer=0;document.getElementById('centerMsg').classList.remove('show');}
+
+const keys={};
+const pad={1:{u:0,d:0,l:0,r:0,punch:0,kick:0,block:0,jump:0},2:{u:0,d:0,l:0,r:0,punch:0,kick:0,block:0,jump:0}};
+window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;handleKey(e.key.toLowerCase(),1);});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=0;handleKey(e.key.toLowerCase(),0);});
+function handleKey(k,v){
+  const map1={w:'u',s:'d',a:'l',d:'r',j:'punch',k:'kick',l:'block',' ':'jump'};
+  const map2={arrowup:'u',arrowdown:'d',arrowleft:'l',arrowright:'r','1':'punch','2':'kick','3':'block','0':'jump'};
+  if(map1[k]!==undefined)pad[1][map1[k]]=v;
+  if(map2[k]!==undefined)pad[2][map2[k]]=v;
+}
+document.querySelectorAll('#pads button').forEach(b=>{
+  const p=+b.dataset.p, act=b.dataset.a, dir=b.dataset.d;
+  const down=e=>{e.preventDefault();if(act)pad[p][act]=1;if(dir)pad[p][dir]=1;};
+  const up=e=>{e.preventDefault();if(act)pad[p][act]=0;if(dir)pad[p][dir]=0;};
+  b.addEventListener('touchstart',down,{passive:false});b.addEventListener('touchend',up,{passive:false});
+  b.addEventListener('mousedown',down);b.addEventListener('mouseup',up);b.addEventListener('mouseleave',up);
+});
+
+function update(){
+  if(state!==ST.play){if(msgTimer>0){msgTimer--;if(msgTimer===0)hideMsg();}return;}
+  for(const p of players)updatePlayer(p);
+  for(const e of enemies)updateEnemy(e);
+  if(boss)updateBoss(boss);
+  let mid=0,cnt=0;
+  for(const p of players){if(!p.dead){mid+=p.x;cnt++;}}
+  if(cnt)camX=mid/cnt-VW/2;
+  camX=Math.max(0,Math.min(camX,1400));
+  if(shake>0)shake-=1;
+  if(enemies.length===0&&!boss){
+    if(wave<3){wave++;showMsg('WAVE '+wave,60);spawnWave();}
+    else {spawnBoss();state=ST.boss;}
+  }
+  if(boss&&boss.dead){score+=500;showMsg('YOU WIN',180);state=ST.win;}
+  if(players.every(p=>p.dead)){showMsg('GAME OVER',180);state=ST.lose;}
+  document.getElementById('p1hp').textContent=Math.max(0,Math.round(players[0].hp));
+  document.getElementById('p1barFill').style.width=Math.max(0,players[0].hp)+'%';
+  document.getElementById('p2hp').textContent=Math.max(0,Math.round(players[1].hp));
+  document.getElementById('p2barFill').style.width=Math.max(0,players[1].hp)+'%';
+  document.getElementById('waveNum').textContent=wave;
+  document.getElementById('scoreTxt').textContent='SCORE '+score;
+}
+
+function updatePlayer(p){
+  if(p.dead){p.vy+=GRAV;p.y+=p.vy;if(p.y>GROUND+200)p.y=GROUND+200;return;}
+  const I=pad[p.isP2?2:1];
+  let mvx=0;
+  if(I.l)mvx-=1;if(I.r)mvx+=1;
+  if(p.hitstun>0){p.hitstun--;p.vx*=0.7;}
+  else if(p.atk>0){p.atk--;p.vx*=0.5;}
+  else {p.vx=mvx*3.2;if(mvx!==0)p.facing=mvx>0?1:-1;}
+  if(I.jump&&p.jumps>0&&p.coyote>0){p.vy=-11.5;p.jumps--;p.coyote=0;}
+  p.coyote=Math.max(0,p.coyote-1);
+  if(p.y>=GROUND)p.coyote=6;
+  p.vy+=GRAV;p.x+=p.vx;p.y+=p.vy;
+  if(p.y>=GROUND){p.y=GROUND;p.vy=0;p.jumps=1;}
+  p.x=Math.max(camX-20,Math.min(p.x,camX+VW+20));
+  p.block=!!I.block&&p.hitstun===0;
+  if(p.atkCD>0)p.atkCD--;
+  if(p.atk===0){
+    if(I.punch&&p.atkCD===0){p.atk=14;p.atkType='punch';p.atkCD=22;doAttack(p,'punch');}
+    else if(I.kick&&p.atkCD===0){p.atk=18;p.atkType='kick';p.atkCD=30;doAttack(p,'kick');}
+  }
+  if(p.invuln>0)p.invuln--;
+  if(p.flash>0)p.flash--;
+  if(p.hitstun>0)p.state='hit';
+  else if(p.atk>0)p.state=p.atkType;
+  else if(p.block)p.state='block';
+  else if(Math.abs(p.vx)>0.5)p.state='walk';
+  else p.state='idle';
+}
+function doAttack(p,type){
+  const reach=type==='punch'?46:62;
+  const dmg=type==='punch'?9:13;
+  const hx=p.x+p.facing*20, hy=p.y-30;
+  for(const e of enemies){
+    if(e.dead)continue;
+    if(Math.abs(e.x-hx)<reach+e.w/2&&Math.abs(e.y-hy)<40){hurtEnemy(e,dmg,p.facing);}
+  }
+  if(boss&&!boss.dead){
+    if(Math.abs(boss.x-hx)<reach+boss.w/2&&Math.abs(boss.y-hy)<50){hurtBoss(boss,dmg,p.facing);}
+  }
+}
+function hurtEnemy(e,dmg,dir){
+  e.hp-=dmg;e.hitstun=10;e.vx=dir*4;e.flash=8;score+=10;
+  if(e.hp<=0){e.dead=true;score+=20;setTimeout(()=>{const i=enemies.indexOf(e);if(i>=0)enemies.splice(i,1);},300);}
+}
+function hurtBoss(b,dmg,dir){
+  b.hp-=dmg;b.hitstun=8;b.vx=dir*2;b.flash=8;score+=5;
+  if(b.hp<=0){b.dead=true;}
+}
+function updateEnemy(e){
+  if(e.dead){e.vy+=GRAV;e.y+=e.vy;return;}
+  let target=null,bd=1e9;
+  for(const p of players){if(!p.dead){const d=Math.abs(p.x-e.x);if(d<bd){bd=d;target=p;}}}
+  if(!target)return;
+  e.facing=target.x>e.x?1:-1;
+  if(bd>60){e.vx=e.facing*1.4;e.state='walk';}
+  else {e.vx=0;e.state='idle';
+    if(e.atk===0){e.atk=20;e.state='punch';}
+  }
+  if(e.atk>0){e.atk--;if(e.atk===10){
+    for(const p of players){if(!p.dead&&p.invuln===0){
+      const dmg=p.block?4:11;
+      p.hp-=dmg;p.hitstun=12;p.vx=e.facing*5;p.invuln=20;p.flash=10;
+      if(p.hp<=0)p.dead=true;
+    }}
+  }}
+  e.vy+=GRAV;e.x+=e.vx;e.y+=e.vy;
+  if(e.y>=GROUND){e.y=GROUND;e.vy=0;}
+  if(e.flash>0)e.flash--;
+}
+function updateBoss(b){
+  if(b.dead){b.vy+=GRAV;b.y+=b.vy;return;}
+  let target=null,bd=1e9;
+  for(const p of players){if(!p.dead){const d=Math.abs(p.x-b.x);if(d<bd){bd=d;target=p;}}}
+  if(!target)return;
+  b.facing=target.x>b.x?1:-1;
+  if(b.hitstun>0){b.hitstun--;b.vx*=0.6;}
+  else if(b.atk>0){b.atk--;b.vx*=0.4;if(b.atk===12){for(const p of players){if(!p.dead&&p.invuln===0){const dmg=p.block?6:16;p.hp-=dmg;p.hitstun=16;p.vx=b.facing*7;p.invuln=24;p.flash=12;if(p.hp<=0)p.dead=true;}}}}
+  else {
+    if(bd>80){b.vx=b.facing*1.8;b.state='walk';}
+    else {b.vx=0;b.state='idle';if(b.atkCD<=0){b.atk=26;b.atkCD=50;b.state='punch';}}
+  }
+  if(b.atkCD>0)b.atkCD--;
+  b.vy+=GRAV;b.x+=b.vx;b.y+=b.vy;
+  if(b.y>=GROUND-10){b.y=GROUND-10;b.vy=0;}
+  if(b.flash>0)b.flash--;
+  if(b.hp<b.maxhp*0.4&&b.phase===0){b.phase=1;showMsg('ENRAGED',60);}
+}
+
+function draw(){
+  ctx.save();
+  if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+  ctx.clearRect(0,0,VW,VH);
+  const g=ctx.createLinearGradient(0,0,0,VH);g.addColorStop(0,'#1a2233');g.addColorStop(1,'#0e1320');
+  ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);
+  ctx.fillStyle='#121826';
+  for(let i=0;i<8;i++){const bx=((i*220-camX*0.3)%(VW+400))-200;ctx.fillRect(bx,VH-160,160,160);}
+  ctx.fillStyle='#0c1220';
+  for(let i=0;i<10;i++){const bx=((i*160-camX*0.6)%(VW+320))-160;ctx.fillRect(bx,VH-110,120,110);}
+  ctx.fillStyle='#1b2438';ctx.fillRect(0,GROUND,VW,VH-GROUND);
+  ctx.fillStyle='#2a3550';ctx.fillRect(0,GROUND,VW,4);
+  for(const e of enemies)drawFighter(e,false);
+  if(boss)drawFighter(boss,true);
+  for(const p of players)drawFighter(p,false);
+  ctx.restore();
+}
+function drawFighter(f,isBoss){
+  if(f.dead&&f.y>GROUND+100)return;
+  const x=f.x-camX, y=f.y;
+  ctx.save();
+  ctx.translate(x,y);
+  if(f.facing<0)ctx.scale(-1,1);
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,2,f.w*0.6,6,0,0,7);ctx.fill();
+  const col=isBoss?'#7c2d3a':(f.isP2?'#3b4a7a':'#2f6f5e');
+  ctx.fillStyle=col;
+  ctx.fillRect(-8,0,7,22);ctx.fillRect(1,0,7,22);
+  ctx.fillRect(-12,-34,24,30);
+  let armSwing=0;
+  if(f.state==='punch')armSwing=Math.sin((14-f.atk)/14*Math.PI)*10;
+  if(f.state==='kick')armSwing=Math.sin((18-f.atk)/18*Math.PI)*6;
+  ctx.fillRect(10,-30,8,16+armSwing);
+  ctx.fillRect(-18,-30,8,16);
+  const hx=-f.w/2, hy=-f.h+4, hw=f.w, hh=f.h*0.42;
+  if(f.face){
+    ctx.drawImage(f.face,hx,hy,hw,hh);
+  }else{
+    ctx.fillStyle='#e8c9a0';ctx.fillRect(hx,hy,hw,hh);
+    ctx.fillStyle='#3a2a1a';ctx.fillRect(hx+hw*0.25,hy+hh*0.35,3,3);ctx.fillRect(hx+hw*0.6,hy+hh*0.35,3,3);
+    ctx.fillStyle='#3a2a1a';ctx.fillRect(hx+hw*0.35,hy+hh*0.65,hw*0.3,2);
+  }
+  if(isBoss){ctx.fillStyle='#fbbf24';ctx.fillRect(hx-2,hy-6,hw+4,5);}
+  if(f.flash>0){ctx.fillStyle='rgba(255,255,255,'+(f.flash/10)+')';ctx.fillRect(hx-2,hy-2,hw+4,f.h);}
+  if(f.state==='block'){ctx.strokeStyle='rgba(96,165,250,.7)';ctx.lineWidth=2;ctx.strokeRect(hx-3,hy-3,hw+6,f.h+6);}
+  ctx.restore();
+  if(isBoss){
+    ctx.fillStyle='#2a3142';ctx.fillRect(x-30,y-f.h-14,60,5);
+    ctx.fillStyle='#f472b6';ctx.fillRect(x-30,y-f.h-14,60*(f.hp/f.maxhp),5);
+  }
+}
+
+function loop(){update();draw();requestAnimationFrame(loop);}
+loop();
+
+let P1FACE=null,P2FACE=null,BOSSFACE=null;
+function loadFace(file,cb){
   const url=URL.createObjectURL(file);
-  const img=new Image();
-  img.onload=()=>{URL.revokeObjectURL(url);pixelate(img);};
-  img.onerror=()=>{
-    const r=new FileReader();
-    r.onload=()=>{const i2=new Image(); i2.onload=()=>pixelate(i2); i2.onerror=()=>setMsg('Use a screenshot of the photo instead.'); i2.src=r.result;};
-    r.readAsDataURL(file);
-  };
-  img.src=url;
+  const im=new Image();im.onload=()=>{const c=pixelateFace(im,64,32);cb(c);};im.src=url;
 }
-document.getElementById('cam').onchange=e=>load(e.target.files[0]);
-document.getElementById('lib').onchange=e=>load(e.target.files[0]);
-saveBtn.onclick=()=>{
-  try{
-    out.toBlob(blob=>{
-      if(!blob){setMsg('Save failed. Screenshot the face instead.');return;}
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(blob);
-      a.download='face-sprite.png';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setMsg('Saved. Check Downloads or Files.');
-    },'image/png');
-  }catch(e){
-    setMsg('Save failed. Screenshot the face instead.');
-  }
-};
+function bind(id,thumbId,set){
+  document.getElementById(id).addEventListener('change',e=>{
+    const f=e.target.files[0];if(!f)return;
+    loadFace(f,c=>{set(c);const t=document.getElementById(thumbId);t.innerHTML='';t.appendChild(c);checkStart();});
+  });
+}
+bind('f1','t1',c=>P1FACE=c);
+bind('f2','t2',c=>P2FACE=c);
+bind('f3','t3',c=>BOSSFACE=c);
+function checkStart(){document.getElementById('startBtn').disabled=!(P1FACE&&P2FACE);}
+document.getElementById('startBtn').addEventListener('click',startGame);
+function makeDefault(seed){
+  const c=document.createElement('canvas');c.width=64;c.height=64;const x=c.getContext('2d');
+  x.fillStyle=seed;x.fillRect(0,0,64,64);
+  x.fillStyle='#fff';x.fillRect(18,22,8,8);x.fillRect(38,22,8,8);
+  x.fillStyle='#3a2a1a';x.fillRect(22,44,20,3);
+  return c;
+}
+P1FACE=makeDefault('#2f6f5e');P2FACE=makeDefault('#3b4a7a');
+document.getElementById('t1').innerHTML='';document.getElementById('t1').appendChild(P1FACE);
+document.getElementById('t2').innerHTML='';document.getElementById('t2').appendChild(P2FACE);
+checkStart();
 </script>
 </body>
 </html>
